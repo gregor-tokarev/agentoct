@@ -1,0 +1,20 @@
+{
+  "name": "@agentoct/opencode-acp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit -p tsconfig.json"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@opencode-ai/sdk": "^1.2.10"
+  },
+  "devDependencies": {
+    "@agentoct/config": "workspace:*",
+    "@types/node": "^25.3.0",
+    "typescript": "catalog:"
+  }
+}
