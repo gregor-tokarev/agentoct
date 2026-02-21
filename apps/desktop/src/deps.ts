@@ -170,6 +170,11 @@ export const DEPENDENCIES: DependencyDef[] = [
     command: "convex",
     resolveInstallCmd: () => resolveNpmInstall("convex"),
   },
+  {
+    name: "OpenCode CLI",
+    command: "opencode",
+    resolveInstallCmd: () => resolveNpmInstall("opencode-ai"),
+  },
 ];
 
 // --- Public API ---
@@ -181,7 +186,7 @@ export async function checkDependency(dep: DependencyDef): Promise<boolean> {
 export async function installDependency(dep: DependencyDef): Promise<void> {
   const cmd = await dep.resolveInstallCmd();
   if (!cmd) {
-    const isNpm = ["agent-browser", "portless", "convex"].includes(
+    const isNpm = ["agent-browser", "portless", "convex", "opencode"].includes(
       dep.command,
     );
     throw new Error(
