@@ -85,6 +85,47 @@ interface OpenCodeEventEnvelope {
   payload: unknown;
 }
 
+interface OpenCodeProviderCatalogModel {
+  id: string;
+  name: string;
+}
+
+interface OpenCodeProviderCatalog {
+  id: string;
+  name: string;
+  models: Record<string, OpenCodeProviderCatalogModel>;
+}
+
+interface OpenCodeProviderCatalogResponse {
+  all: OpenCodeProviderCatalog[];
+  default: Record<string, string>;
+  connected: string[];
+}
+
+interface OpenCodeSession {
+  id: string;
+  title: string;
+  directory: string;
+}
+
+interface OpenCodeAgent {
+  name: string;
+  description?: string;
+  mode: "subagent" | "primary" | "all";
+  builtIn: boolean;
+}
+
+interface OpenCodePromptResult {
+  mode: "blocking" | "background";
+}
+
+interface OpenCodeOverview {
+  status: OpenCodeRuntimeStatus;
+  sessions: OpenCodeSession[];
+  models: OpenCodeModelInfo[];
+  agents: OpenCodeAgent[];
+}
+
 declare global {
   interface Window {
     electronAPI: {
@@ -106,14 +147,14 @@ declare global {
           options: OpenCodeConnectOptions,
         ) => Promise<OpenCodeRuntimeStatus>;
         stop: () => Promise<void>;
-        listProviders: () => Promise<unknown>;
+        listProviders: () => Promise<OpenCodeProviderCatalogResponse>;
         listModels: () => Promise<OpenCodeModelInfo[]>;
-        listAgents: () => Promise<unknown[]>;
-        listSessions: () => Promise<unknown[]>;
+        listAgents: () => Promise<OpenCodeAgent[]>;
+        listSessions: () => Promise<OpenCodeSession[]>;
         createSession: (input?: {
           title?: string;
           parentID?: string;
-        }) => Promise<unknown>;
+        }) => Promise<OpenCodeSession>;
         setModel: (
           model: OpenCodeModelRef,
           persist?: boolean,
@@ -121,8 +162,8 @@ declare global {
         getSelectedModel: () => Promise<OpenCodeModelRef | null>;
         setSyncMode: (mode: OpenCodeSyncMode) => Promise<OpenCodeSyncMode>;
         getSyncMode: () => Promise<OpenCodeSyncMode>;
-        prompt: (input: OpenCodePromptRequest) => Promise<unknown>;
-        getOverview: () => Promise<unknown>;
+        prompt: (input: OpenCodePromptRequest) => Promise<OpenCodePromptResult>;
+        getOverview: () => Promise<OpenCodeOverview>;
         onEvent: (
           callback: (event: OpenCodeEventEnvelope) => void,
         ) => () => void;

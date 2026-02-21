@@ -1,4 +1,21 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type {
+  OpenCodeAgent,
+  OpenCodeConnectOptions,
+  OpenCodeEventEnvelope,
+  OpenCodeInstallationStatus,
+  OpenCodeModelInfo,
+  OpenCodeModelRef,
+  OpenCodeOverview,
+  OpenCodePromptRequest,
+  OpenCodePromptResult,
+  OpenCodeRuntimeStatus,
+  OpenCodeStartOptions,
+  OpenCodeSyncMode,
+  OpenCodeSession,
+  ProviderCatalogResponse,
+} from "@agentoct/opencode-acp";
+import type { DependencyStatus } from "./deps.js";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   platform: process.platform,
@@ -9,38 +26,62 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("navigate-to-url", handler);
     return () => ipcRenderer.removeListener("navigate-to-url", handler);
   },
-  onDepsStatus: (callback: (statuses: unknown[]) => void) => {
+  onDepsStatus: (callback: (statuses: DependencyStatus[]) => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
-      statuses: unknown[],
+      statuses: DependencyStatus[],
     ) => callback(statuses);
     ipcRenderer.on("deps:status", handler);
     return () => ipcRenderer.removeListener("deps:status", handler);
   },
   opencode: {
-    ensureInstallation: (installIfMissing = false) =>
+    ensureInstallation: (
+      installIfMissing = false,
+    ): Promise<OpenCodeInstallationStatus> =>
       ipcRenderer.invoke("opencode:ensure-installation", installIfMissing),
-    getStatus: () => ipcRenderer.invoke("opencode:get-status"),
-    startManaged: (options?: unknown) =>
+    getStatus: (): Promise<OpenCodeRuntimeStatus> =>
+      ipcRenderer.invoke("opencode:get-status"),
+    startManaged: (
+      options?: OpenCodeStartOptions,
+    ): Promise<OpenCodeRuntimeStatus> =>
       ipcRenderer.invoke("opencode:start-managed", options),
-    connect: (options: unknown) => ipcRenderer.invoke("opencode:connect", options),
-    stop: () => ipcRenderer.invoke("opencode:stop"),
-    listProviders: () => ipcRenderer.invoke("opencode:list-providers"),
-    listModels: () => ipcRenderer.invoke("opencode:list-models"),
-    listAgents: () => ipcRenderer.invoke("opencode:list-agents"),
-    listSessions: () => ipcRenderer.invoke("opencode:list-sessions"),
-    createSession: (input?: unknown) =>
+    connect: (
+      options: OpenCodeConnectOptions,
+    ): Promise<OpenCodeRuntimeStatus> =>
+      ipcRenderer.invoke("opencode:connect", options),
+    stop: (): Promise<void> => ipcRenderer.invoke("opencode:stop"),
+    listProviders: (): Promise<ProviderCatalogResponse> =>
+      ipcRenderer.invoke("opencode:list-providers"),
+    listModels: (): Promise<OpenCodeModelInfo[]> =>
+      ipcRenderer.invoke("opencode:list-models"),
+    listAgents: (): Promise<OpenCodeAgent[]> =>
+      ipcRenderer.invoke("opencode:list-agents"),
+    listSessions: (): Promise<OpenCodeSession[]> =>
+      ipcRenderer.invoke("opencode:list-sessions"),
+    createSession: (
+      input?: { title?: string; parentID?: string },
+    ): Promise<OpenCodeSession> =>
       ipcRenderer.invoke("opencode:create-session", input),
-    setModel: (model: unknown, persist?: boolean) =>
+    setModel: (
+      model: OpenCodeModelRef,
+      persist?: boolean,
+    ): Promise<OpenCodeModelRef> =>
       ipcRenderer.invoke("opencode:set-model", model, persist),
-    getSelectedModel: () => ipcRenderer.invoke("opencode:get-selected-model"),
-    setSyncMode: (mode: unknown) => ipcRenderer.invoke("opencode:set-sync-mode", mode),
-    getSyncMode: () => ipcRenderer.invoke("opencode:get-sync-mode"),
-    prompt: (input: unknown) => ipcRenderer.invoke("opencode:prompt", input),
-    getOverview: () => ipcRenderer.invoke("opencode:get-overview"),
-    onEvent: (callback: (event: unknown) => void) => {
-      const handler = (_event: Electron.IpcRendererEvent, event: unknown) =>
-        callback(event);
+    getSelectedModel: (): Promise<OpenCodeModelRef | null> =>
+      ipcRenderer.invoke("opencode:get-selected-model"),
+    setSyncMode: (mode: OpenCodeSyncMode): Promise<OpenCodeSyncMode> =>
+      ipcRenderer.invoke("opencode:set-sync-mode", mode),
+    getSyncMode: (): Promise<OpenCodeSyncMode> =>
+      ipcRenderer.invoke("opencode:get-sync-mode"),
+    prompt: (input: OpenCodePromptRequest): Promise<OpenCodePromptResult> =>
+      ipcRenderer.invoke("opencode:prompt", input),
+    getOverview: (): Promise<OpenCodeOverview> =>
+      ipcRenderer.invoke("opencode:get-overview"),
+    onEvent: (callback: (event: OpenCodeEventEnvelope) => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        event: OpenCodeEventEnvelope,
+      ) => callback(event);
       ipcRenderer.on("opencode:event", handler);
       return () => ipcRenderer.removeListener("opencode:event", handler);
     },

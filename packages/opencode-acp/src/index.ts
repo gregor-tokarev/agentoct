@@ -26,7 +26,12 @@ import {
 
 const execFileAsync = promisify(execFileCallback);
 
-type ManagedServer = Awaited<ReturnType<typeof createOpencodeServer>>;
+type ManagedServer = Omit<
+  Awaited<ReturnType<typeof createOpencodeServer>>,
+  "close"
+> & {
+  close: () => void | Promise<void>;
+};
 
 type UnwrappedResult<T> = {
   data?: T;
@@ -59,7 +64,7 @@ interface ProviderCatalog {
   models: Record<string, ProviderCatalogModel>;
 }
 
-interface ProviderCatalogResponse {
+export interface ProviderCatalogResponse {
   all: ProviderCatalog[];
   default: Record<string, string>;
   connected: string[];
@@ -187,6 +192,8 @@ export interface OpenCodeOverview {
 }
 
 export type OpenCodeEventListener = (event: OpenCodeEventEnvelope) => void;
+export type OpenCodeAgent = Agent;
+export type OpenCodeSession = Session;
 
 function formatUnknownError(error: unknown): string {
   if (error instanceof Error) {
@@ -276,7 +283,11 @@ export class OpenCodeAcpApi {
           };
 
           for (const listener of [...this.listeners]) {
-            listener(envelope);
+            try {
+              listener(envelope);
+            } catch (err) {
+              console.warn("OpenCode event listener threw:", err);
+            }
           }
         }
       } catch (error) {
@@ -360,6 +371,9 @@ export class OpenCodeAcpApi {
 
     return () => {
       this.listeners.delete(listener);
+      if (this.listeners.size === 0) {
+        this.stopEventStream();
+      }
     };
   }
 
@@ -490,10 +504,7 @@ export class OpenCodeAcpApi {
 
   async stop(): Promise<void> {
     this.stopEventStream();
-
-    if (this.managedServer) {
-      this.managedServer.close();
-    }
+    const managedServer = this.managedServer;
 
     this.managedServer = null;
     this.client = null;
@@ -501,6 +512,10 @@ export class OpenCodeAcpApi {
     this.transport = null;
     this.connectedAt = null;
     this.lastEventAt = null;
+
+    if (managedServer) {
+      await managedServer.close();
+    }
   }
 
   setSyncMode(mode: OpenCodeSyncMode): OpenCodeSyncMode {
