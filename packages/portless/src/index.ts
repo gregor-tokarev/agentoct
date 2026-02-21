@@ -17,6 +17,7 @@ export type PortlessCommandErrorCode =
   | "INVALID_COMMAND"
   | "INVALID_DOMAIN"
   | "INVALID_PORT"
+  | "INVALID_TIMEOUT"
   | "SPAWN_FAILED";
 
 export class PortlessCommandError extends Error {
@@ -33,6 +34,7 @@ export class PortlessCommandError extends Error {
 
 export interface PortlessExecResult {
   exitCode: number;
+  signal?: NodeJS.Signals;
   stdout: string;
   stderr: string;
 }
@@ -90,6 +92,7 @@ export interface SpawnedPortlessDomain {
 
 interface ExecFileError {
   code: number | string | null;
+  signal?: NodeJS.Signals | null;
   stdout?: string;
   stderr?: string;
 }
@@ -145,6 +148,21 @@ function assertValidPort(port: number): void {
       `Invalid proxy port "${port}". Expected an integer between 1 and 65535.`,
     );
   }
+}
+
+function resolveSpawnTimeout(timeout: number | undefined): number | null {
+  if (timeout === undefined || timeout === 0) {
+    return null;
+  }
+
+  if (!Number.isFinite(timeout) || timeout < 0) {
+    throw new PortlessCommandError(
+      "INVALID_TIMEOUT",
+      `Invalid timeout "${timeout}". Expected a positive number of milliseconds or 0.`,
+    );
+  }
+
+  return Math.ceil(timeout);
 }
 
 function assertValidHost(host: string): void {
@@ -219,6 +237,7 @@ async function runPortless(
 
     return {
       exitCode: 0,
+      signal: undefined,
       stdout,
       stderr,
     };
@@ -226,6 +245,7 @@ async function runPortless(
     if (isExecFileError(error)) {
       return {
         exitCode: toExitCode(error.code),
+        signal: error.signal ?? undefined,
         stdout: error.stdout ?? "",
         stderr: error.stderr ?? "",
       };
@@ -318,6 +338,7 @@ export function spawnDomain(options: SpawnDomainOptions): SpawnedPortlessDomain 
   const args: string[] = [];
   appendProxyFlags(args, options);
   args.push(domain, command, ...(options.args ?? []));
+  const timeoutMs = resolveSpawnTimeout(options.timeout);
 
   const child = spawn(getCommand(options.binaryPath), args, {
     cwd: options.cwd,
@@ -327,6 +348,17 @@ export function spawnDomain(options: SpawnDomainOptions): SpawnedPortlessDomain 
 
   let stdout = "";
   let stderr = "";
+  let wasTimeout = false;
+
+  const timeoutHandle =
+    timeoutMs === null
+      ? null
+      : setTimeout(() => {
+          if (child.exitCode === null && child.signalCode === null) {
+            wasTimeout = true;
+            child.kill("SIGTERM");
+          }
+        }, timeoutMs);
 
   child.stdout?.on("data", (chunk: Buffer | string) => {
     const text = typeof chunk === "string" ? chunk : chunk.toString();
@@ -342,6 +374,10 @@ export function spawnDomain(options: SpawnDomainOptions): SpawnedPortlessDomain 
 
   const completion = new Promise<PortlessExecResult>((resolve, reject) => {
     child.once("error", (error: Error) => {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+
       if (isErrnoException(error) && error.code === "ENOENT") {
         reject(
           new PortlessCommandError(
@@ -362,9 +398,18 @@ export function spawnDomain(options: SpawnDomainOptions): SpawnedPortlessDomain 
       );
     });
 
-    child.once("close", (code) => {
+    child.once("close", (code, signal) => {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+
+      if (wasTimeout && timeoutMs !== null) {
+        stderr = `${stderr}${stderr ? "\n" : ""}Process terminated after timeout of ${timeoutMs}ms.`;
+      }
+
       resolve({
         exitCode: toExitCode(code),
+        signal: signal ?? undefined,
         stdout,
         stderr,
       });
@@ -390,11 +435,11 @@ export function spawnDomain(options: SpawnDomainOptions): SpawnedPortlessDomain 
 function createForwarderScript(): string {
   return [
     'const net=require("node:net");',
-    "const targetHost=process.argv[1];",
-    "const targetPort=Number(process.argv[2]);",
+    "const targetHost=process.argv[process.argv.length-2];",
+    "const targetPort=Number(process.argv[process.argv.length-1]);",
     "const listenPort=Number(process.env.PORT);",
     "if(!Number.isInteger(targetPort)||targetPort<1||targetPort>65535){",
-    '  console.error("Invalid target port:", process.argv[2]);',
+    '  console.error("Invalid target port:", process.argv[process.argv.length-1]);',
     "  process.exit(2);",
     "}",
     "if(!targetHost){",
