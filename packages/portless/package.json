@@ -1,0 +1,17 @@
+{
+  "name": "@agentoct/portless",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit -p tsconfig.json"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@agentoct/config": "workspace:*",
+    "@types/node": "^25.3.0",
+    "typescript": "catalog:"
+  }
+}

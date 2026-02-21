@@ -61,6 +61,15 @@
         "typescript": "catalog:",
       },
     },
+    "packages/portless": {
+      "name": "@agentoct/portless",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@agentoct/config": "workspace:*",
+        "@types/node": "^25.3.0",
+        "typescript": "catalog:",
+      },
+    },
     "packages/worktree": {
       "name": "@agentoct/worktree",
       "version": "0.0.0",
@@ -82,6 +91,8 @@
     "@agentoct/env": ["@agentoct/env@workspace:packages/env"],
 
     "@agentoct/opencode-acp": ["@agentoct/opencode-acp@workspace:packages/opencode-acp"],
+
+    "@agentoct/portless": ["@agentoct/portless@workspace:packages/portless"],
 
     "@agentoct/worktree": ["@agentoct/worktree@workspace:packages/worktree"],
 
