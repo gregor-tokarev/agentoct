@@ -1,5 +1,6 @@
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { promisify } from "node:util";
+import { DEFAULT_PORTLESS_PROXY_PORT } from "./constants.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -84,7 +85,7 @@ export function domainUrl(
   options?: { port?: number; https?: boolean },
 ): string {
   const normalizedDomain = assertText(domain, "domain");
-  const port = options?.port ?? 1_355;
+  const port = options?.port ?? DEFAULT_PORTLESS_PROXY_PORT;
   const useHttps = options?.https ?? false;
   return `${useHttps ? "https" : "http"}://${normalizedDomain}.localhost:${port}`;
 }
@@ -112,7 +113,9 @@ export class PortlessClient {
       stdio: options.stdio ?? "inherit",
     });
 
-    const proxyPort = parseOptionalPort(mergedEnv.PORTLESS_PORT) ?? 1_355;
+    const proxyPort =
+      parseOptionalPort(mergedEnv.PORTLESS_PORT) ??
+      DEFAULT_PORTLESS_PROXY_PORT;
     const proxyHttps = parseBooleanFlag(mergedEnv.PORTLESS_HTTPS);
 
     return {
@@ -173,3 +176,10 @@ export class PortlessClient {
 }
 
 export const portlessClient = new PortlessClient();
+
+export { DEFAULT_PORTLESS_PROXY_PORT } from "./constants.js";
+export type {
+  PortlessProxyCommandResult,
+  PortlessSpawnInput,
+  PortlessSpawnResult,
+} from "./ipc.js";

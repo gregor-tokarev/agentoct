@@ -1,23 +1,15 @@
 /// <reference types="vite/client" />
+import type {
+  PortlessProxyCommandResult,
+  PortlessSpawnInput,
+  PortlessSpawnResult,
+} from "@agentoct/portless/ipc";
 
 interface DependencyStatus {
   name: string;
   installed: boolean;
   installing: boolean;
   error?: string;
-}
-
-interface PortlessSpawnInput {
-  domain: string;
-  command: string;
-  args?: string[];
-  cwd?: string;
-}
-
-interface PortlessSpawnResult {
-  sessionId: number;
-  pid: number | null;
-  url: string;
 }
 
 declare global {
@@ -29,7 +21,7 @@ declare global {
         input: PortlessSpawnInput,
       ) => Promise<PortlessSpawnResult>;
       killPortlessDomain: (sessionId: number) => Promise<boolean>;
-      stopPortlessProxy: () => Promise<{ stdout: string; stderr: string }>;
+      stopPortlessProxy: () => Promise<PortlessProxyCommandResult>;
       onNavigateToUrl: (callback: (url: string) => void) => () => void;
       onDepsStatus: (
         callback: (statuses: DependencyStatus[]) => void,

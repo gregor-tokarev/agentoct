@@ -1,7 +1,13 @@
 import { app, BrowserWindow, ipcMain } from "electron";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PortlessClient } from "@agentoct/portless";
+import {
+  PORTLESS_IPC_CHANNELS,
+  type PortlessSpawnInput,
+  type PortlessSpawnResult,
+} from "@agentoct/portless/ipc";
 import {
   DEPENDENCIES,
   checkDependency,
@@ -22,6 +28,17 @@ const portlessSessions = new Map<
   number,
   ReturnType<PortlessClient["spawnDomain"]>
 >();
+const workspaceRoot = path.resolve(process.cwd());
+const allowedPortlessCommands = new Set([
+  "bun",
+  "bunx",
+  "node",
+  "npm",
+  "npx",
+  "pnpm",
+  "pnpx",
+  "yarn",
+]);
 
 function createWindow() {
   const window = new BrowserWindow({
@@ -125,12 +142,108 @@ function startDependencyCheckOnce() {
   });
 }
 
-function spawnPortlessDomain(input: {
-  domain: string;
-  command: string;
-  args?: string[];
-  cwd?: string;
-}) {
+function normalizePortlessDomain(rawDomain: unknown): string {
+  if (typeof rawDomain !== "string") {
+    throw new Error('Expected "domain" to be a string');
+  }
+
+  const domain = rawDomain.trim().toLowerCase();
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(domain)) {
+    throw new Error(
+      'Expected "domain" to be a valid localhost subdomain label',
+    );
+  }
+
+  return domain;
+}
+
+function normalizePortlessCommand(rawCommand: unknown): string {
+  if (typeof rawCommand !== "string") {
+    throw new Error('Expected "command" to be a string');
+  }
+
+  const command = rawCommand.trim();
+  if (!allowedPortlessCommands.has(command)) {
+    throw new Error(`Unsupported command "${command}" for portless spawn`);
+  }
+
+  return command;
+}
+
+function normalizePortlessArgs(rawArgs: unknown): string[] | undefined {
+  if (rawArgs === undefined) {
+    return undefined;
+  }
+
+  if (
+    !Array.isArray(rawArgs) ||
+    !rawArgs.every((arg) => typeof arg === "string")
+  ) {
+    throw new Error('Expected "args" to be an array of strings');
+  }
+
+  return rawArgs;
+}
+
+function normalizePortlessCwd(rawCwd: unknown): string {
+  if (rawCwd === undefined || rawCwd === "") {
+    return workspaceRoot;
+  }
+
+  if (typeof rawCwd !== "string") {
+    throw new Error('Expected "cwd" to be a string');
+  }
+
+  const resolvedCwd = path.resolve(workspaceRoot, rawCwd);
+  const relativePath = path.relative(workspaceRoot, resolvedCwd);
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    throw new Error('Expected "cwd" to resolve inside the workspace root');
+  }
+
+  if (
+    !fs.existsSync(resolvedCwd) ||
+    !fs.statSync(resolvedCwd).isDirectory()
+  ) {
+    throw new Error('Expected "cwd" to point to an existing directory');
+  }
+
+  return resolvedCwd;
+}
+
+function normalizePortlessSpawnInput(rawInput: unknown): PortlessSpawnInput {
+  if (!rawInput || typeof rawInput !== "object") {
+    throw new Error("Expected portless spawn payload object");
+  }
+
+  const input = rawInput as {
+    domain?: unknown;
+    command?: unknown;
+    args?: unknown;
+    cwd?: unknown;
+  };
+
+  return {
+    domain: normalizePortlessDomain(input.domain),
+    command: normalizePortlessCommand(input.command),
+    args: normalizePortlessArgs(input.args),
+    cwd: normalizePortlessCwd(input.cwd),
+  };
+}
+
+function parseSessionId(rawSessionId: unknown): number | null {
+  if (typeof rawSessionId !== "number" || !Number.isInteger(rawSessionId)) {
+    return null;
+  }
+
+  if (rawSessionId < 1) {
+    return null;
+  }
+
+  return rawSessionId;
+}
+
+function spawnPortlessDomain(rawInput: unknown): PortlessSpawnResult {
+  const input = normalizePortlessSpawnInput(rawInput);
   const session = portless.spawnDomain(input);
   const sessionId = nextPortlessSessionId++;
 
@@ -158,21 +271,28 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle(
-    "portless:spawn-domain",
-    (_event, input: { domain: string; command: string; args?: string[]; cwd?: string }) =>
-      spawnPortlessDomain(input),
+    PORTLESS_IPC_CHANNELS.spawnDomain,
+    (_event, input: unknown) => spawnPortlessDomain(input),
   );
 
-  ipcMain.handle("portless:kill-domain", (_event, sessionId: number) => {
-    const session = portlessSessions.get(sessionId);
-    if (!session) {
-      return false;
-    }
+  ipcMain.handle(
+    PORTLESS_IPC_CHANNELS.killDomain,
+    (_event, rawSessionId: unknown) => {
+      const sessionId = parseSessionId(rawSessionId);
+      if (!sessionId) {
+        return false;
+      }
 
-    return session.kill();
-  });
+      const session = portlessSessions.get(sessionId);
+      if (!session) {
+        return false;
+      }
 
-  ipcMain.handle("portless:stop-proxy", async () => {
+      return session.kill();
+    },
+  );
+
+  ipcMain.handle(PORTLESS_IPC_CHANNELS.stopProxy, async () => {
     const result = await portless.killProxy();
     return result;
   });
