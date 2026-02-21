@@ -86,7 +86,15 @@ export async function removeWorktree(
  * Prune stale worktree references (worktrees whose directories were deleted).
  */
 export async function pruneWorktrees(repoPath: string): Promise<void> {
-  await git(["worktree", "prune"], { cwd: repoPath });
+  const result = await git(["worktree", "prune"], { cwd: repoPath });
+
+  if (result.exitCode !== 0) {
+    throw new WorktreeError(
+      "WORKTREE_PRUNE_FAILED",
+      `Failed to prune worktrees for repository at ${repoPath}`,
+      result.stderr,
+    );
+  }
 }
 
 async function resolveHead(worktreePath: string): Promise<string> {
@@ -96,7 +104,8 @@ async function resolveHead(worktreePath: string): Promise<string> {
 
 function parseWorktreeList(output: string): WorktreeInfo[] {
   const worktrees: WorktreeInfo[] = [];
-  const blocks = output.split("\n\n").filter(Boolean);
+  const normalized = output.replace(/\r\n/g, "\n").trimEnd();
+  const blocks = normalized.split("\n\n").filter(Boolean);
 
   for (const block of blocks) {
     const lines = block.split("\n");
@@ -104,14 +113,15 @@ function parseWorktreeList(output: string): WorktreeInfo[] {
     let head = "";
     let branch: string | null = null;
 
-    for (const line of lines) {
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
       if (line.startsWith("worktree ")) {
-        path = line.slice("worktree ".length);
+        path = resolve(line.slice("worktree ".length).trim());
       } else if (line.startsWith("HEAD ")) {
-        head = line.slice("HEAD ".length);
+        head = line.slice("HEAD ".length).trim();
       } else if (line.startsWith("branch ")) {
-        const ref = line.slice("branch ".length);
-        branch = ref.replace("refs/heads/", "");
+        const ref = line.slice("branch ".length).trim();
+        branch = ref.replace(/^refs\/heads\//, "") || null;
       }
     }
 

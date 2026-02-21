@@ -8,13 +8,18 @@ const DEFAULT_TIMEOUT = 60_000;
 const MAX_BUFFER = 10 * 1024 * 1024; // 10 MB
 
 interface ExecFileError {
-  code: number | null;
+  code: number | string | null;
   stdout: string;
   stderr: string;
 }
 
 function isExecError(err: unknown): err is ExecFileError {
   return err instanceof Error && "stdout" in err && "stderr" in err;
+}
+
+function toExitCode(code: number | string | null): number {
+  if (typeof code === "number") return code;
+  return 1;
 }
 
 /**
@@ -38,7 +43,7 @@ export async function git(
   } catch (err: unknown) {
     if (isExecError(err)) {
       return {
-        exitCode: err.code ?? 1,
+        exitCode: toExitCode(err.code),
         stdout: err.stdout ?? "",
         stderr: err.stderr ?? "",
       };
@@ -69,7 +74,7 @@ export async function exec(
   } catch (err: unknown) {
     if (isExecError(err)) {
       return {
-        exitCode: err.code ?? 1,
+        exitCode: toExitCode(err.code),
         stdout: err.stdout ?? "",
         stderr: err.stderr ?? "",
       };
