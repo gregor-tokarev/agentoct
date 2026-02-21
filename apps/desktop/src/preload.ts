@@ -9,4 +9,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("navigate-to-url", handler);
     return () => ipcRenderer.removeListener("navigate-to-url", handler);
   },
+  onDepsStatus: (callback: (statuses: unknown[]) => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      statuses: unknown[],
+    ) => callback(statuses);
+    ipcRenderer.on("deps:status", handler);
+    return () => ipcRenderer.removeListener("deps:status", handler);
+  },
 });

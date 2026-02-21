@@ -1,11 +1,21 @@
 /// <reference types="vite/client" />
 
+interface DependencyStatus {
+  name: string;
+  installed: boolean;
+  installing: boolean;
+  error?: string;
+}
+
 declare global {
   interface Window {
     electronAPI: {
       platform: string;
       openUrl: (url: string) => Promise<void>;
       onNavigateToUrl: (callback: (url: string) => void) => () => void;
+      onDepsStatus: (
+        callback: (statuses: DependencyStatus[]) => void,
+      ) => () => void;
     };
   }
 
