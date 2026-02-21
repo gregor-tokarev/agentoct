@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,10 +11,15 @@ function createWindow() {
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
+      webviewTag: true,
     },
   });
 
   win.loadFile(path.join(__dirname, "renderer/index.html"));
+
+  ipcMain.handle("open-url", (_event, url: string) => {
+    win.webContents.send("navigate-to-url", url);
+  });
 }
 
 app.whenReady().then(() => {
