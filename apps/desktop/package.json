@@ -1,0 +1,25 @@
+{
+  "name": "desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && vite build",
+    "check-types": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.web.json",
+    "dev": "bun run build && electron .",
+    "start": "bun run build && electron ."
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.0",
+    "@types/node": "^25.3.0",
+    "electron": "^40.6.0",
+    "tailwindcss": "^4.2.0",
+    "typescript": "catalog:",
+    "vite": "^7.1.3",
+    "vite-plugin-solid": "^2.11.8"
+  },
+  "dependencies": {
+    "solid-js": "^1.9.9"
+  }
+}
