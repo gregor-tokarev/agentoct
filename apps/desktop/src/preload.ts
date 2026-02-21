@@ -3,6 +3,15 @@ import { contextBridge, ipcRenderer } from "electron";
 contextBridge.exposeInMainWorld("electronAPI", {
   platform: process.platform,
   openUrl: (url: string) => ipcRenderer.invoke("open-url", url),
+  spawnPortlessDomain: (input: {
+    domain: string;
+    command: string;
+    args?: string[];
+    cwd?: string;
+  }) => ipcRenderer.invoke("portless:spawn-domain", input),
+  killPortlessDomain: (sessionId: number) =>
+    ipcRenderer.invoke("portless:kill-domain", sessionId),
+  stopPortlessProxy: () => ipcRenderer.invoke("portless:stop-proxy"),
   onNavigateToUrl: (callback: (url: string) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, url: string) =>
       callback(url);

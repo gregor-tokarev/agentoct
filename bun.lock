@@ -19,6 +19,7 @@
       "name": "desktop",
       "version": "0.0.0",
       "dependencies": {
+        "@agentoct/portless": "workspace:*",
         "solid-js": "^1.9.9",
       },
       "devDependencies": {
@@ -48,6 +49,15 @@
         "typescript": "catalog:",
       },
     },
+    "packages/portless": {
+      "name": "@agentoct/portless",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@agentoct/config": "workspace:*",
+        "@types/node": "^25.3.0",
+        "typescript": "catalog:",
+      },
+    },
   },
   "catalog": {
     "dotenv": "^17.2.2",
@@ -58,6 +68,8 @@
     "@agentoct/config": ["@agentoct/config@workspace:packages/config"],
 
     "@agentoct/env": ["@agentoct/env@workspace:packages/env"],
+
+    "@agentoct/portless": ["@agentoct/portless@workspace:packages/portless"],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw=="],
 

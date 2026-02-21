@@ -7,11 +7,29 @@ interface DependencyStatus {
   error?: string;
 }
 
+interface PortlessSpawnInput {
+  domain: string;
+  command: string;
+  args?: string[];
+  cwd?: string;
+}
+
+interface PortlessSpawnResult {
+  sessionId: number;
+  pid: number | null;
+  url: string;
+}
+
 declare global {
   interface Window {
     electronAPI: {
       platform: string;
       openUrl: (url: string) => Promise<void>;
+      spawnPortlessDomain: (
+        input: PortlessSpawnInput,
+      ) => Promise<PortlessSpawnResult>;
+      killPortlessDomain: (sessionId: number) => Promise<boolean>;
+      stopPortlessProxy: () => Promise<{ stdout: string; stderr: string }>;
       onNavigateToUrl: (callback: (url: string) => void) => () => void;
       onDepsStatus: (
         callback: (statuses: DependencyStatus[]) => void,
