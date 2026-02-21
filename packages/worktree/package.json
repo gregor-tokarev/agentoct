@@ -1,0 +1,14 @@
+{
+  "name": "@agentoct/worktree",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@agentoct/config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "typescript": "catalog:"
+  }
+}
